@@ -1,8 +1,8 @@
 === WP Mail Log ===
-Contributors: wpvibes , anandau14, satishprajapati
+Contributors: wpvibes , anandau14
 Tags: email, logs, email log, mail, email logger, mail log, capture emails, capture
-Requires at least: 5.0
-Tested up to: 6.4
+Requires at least: 6.0
+Tested up to: 6.7
 Stable tag: trunk
 Requires PHP: 7.4
 License: GPLv2 or later
@@ -41,6 +41,9 @@ No, it is plug 'n' play plugin. Just install the plugin and it will start captur
 
 
 == Changelog ==
+
+= 1.1.4 = 
+* Compatibility check with latest WordPress release
 
 = 1.1.3 = 
 * Improved database queries for better security 
