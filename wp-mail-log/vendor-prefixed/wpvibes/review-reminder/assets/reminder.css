@@ -1,0 +1,83 @@
+/**
+ * WPVibes Review Reminder
+ * Standalone admin reminder styling — provides its own card chrome
+ * (background, border, shadow) so it does not depend on WordPress
+ * core's admin-chrome CSS classes.
+ */
+
+.wpvibes-review-reminder {
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-left: 4px solid #72aee6;
+	box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+	margin: 5px 15px 15px 0;
+	padding: 12px 16px;
+}
+
+.wpvibes-review-reminder__inner {
+	display: flex;
+	align-items: flex-start;
+	gap: 16px;
+}
+
+.wpvibes-review-reminder__icon {
+	width: 56px;
+	height: 56px;
+	flex-shrink: 0;
+	border-radius: 4px;
+}
+
+.wpvibes-review-reminder__body {
+	flex: 1;
+	min-width: 0;
+}
+
+.wpvibes-review-reminder__message {
+	margin: 0 0 10px 0;
+	font-size: 14px;
+	line-height: 1.5;
+}
+
+.wpvibes-review-reminder__actions {
+	margin: 0;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px 16px;
+	align-items: center;
+}
+
+.wpvibes-review-reminder__btn {
+	margin: 0 !important;
+}
+
+.wpvibes-review-reminder__btn-link {
+	background: none;
+	border: 0;
+	padding: 0;
+	color: #2271b1;
+	cursor: pointer;
+	text-decoration: underline;
+	font-size: 13px;
+}
+
+.wpvibes-review-reminder__btn-link:hover {
+	color: #135e96;
+}
+
+.wpvibes-review-reminder.is-dismissing {
+	opacity: 0.5;
+	pointer-events: none;
+	transition: opacity 0.2s ease;
+}
+
+@media screen and (max-width: 600px) {
+	.wpvibes-review-reminder__inner {
+		flex-direction: column;
+		gap: 12px;
+	}
+	.wpvibes-review-reminder__actions {
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 8px;
+	}
+}

@@ -1,6 +1,7 @@
 <?php
 
 namespace WML\Classes;
+defined( 'ABSPATH' ) || exit;
 
 /**
  * Settings
@@ -78,17 +79,18 @@ class Settings {
 	 *
 	 */
 	public function wml_save_config( $data ) {
-		// TODO :: return method response update
-		$wpv_wml_settings               = [];
-		$wpv_wml_settings['deleteDays'] = $data['deleteDays'];
-		$wpv_wml_settings['deleteLogs'] = $data['deleteLogs'];
-
-		$message = [];
-		if ( current_user_can( 'manage_options' ) ) {
-			$wpv_wml_settings   = update_option( 'wpv_wml_settings', $wpv_wml_settings, false );
-			$message['status']  = 'success';
-			$message['message'] = 'Settings Saved';
-			return $message;
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return [ 'status' => 'error', 'message' => __( 'Insufficient permissions', 'wpv-wml' ) ];
 		}
+
+		$wpv_wml_settings               = [];
+		$wpv_wml_settings['deleteDays'] = absint( $data['deleteDays'] );
+		$wpv_wml_settings['deleteLogs'] = (bool) $data['deleteLogs'];
+
+		update_option( 'wpv_wml_settings', $wpv_wml_settings, false );
+		return [
+			'status'  => 'success',
+			'message' => __( 'Settings Saved', 'wpv-wml' ),
+		];
 	}
 }

@@ -1,7 +1,7 @@
 <?php
-// phpcs:disable WordPress.DateTime.RestrictedFunctions.date_date
-// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared
 namespace WML\Classes;
+
+defined( 'ABSPATH' ) || exit;
 
 use WML\Classes\Settings;
 
@@ -117,9 +117,6 @@ class API extends WP_REST_Controller {
 	private function get_params( $request ) {
 		return $request->get_json_params();
 	}
-	private function make_params() {
-	}
-
 	/**
 	 * This function is called on wml_log api endpoint with creatable method.
 	 *
@@ -147,27 +144,38 @@ class API extends WP_REST_Controller {
 			$params['endDate'] = date( 'Y-m-d H:i:s' );
 		}
 		if ( $params['startDate'] !== '' && $params['startDate'] !== null ) {
-			$orignalStartDateTS  = strtotime( $params['startDate'] );
-			$params['startDate'] = date( 'Y-m-d', $orignalStartDateTS );
-			//$where[]             = " DATE_FORMAT(sent_date,GET_FORMAT(DATE,'JIS')) >= '" . $params['startDate'] . "'";
+			$start = sanitize_text_field( $params['startDate'] );
+			if ( ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $start ) ) {
+				$start = date( 'Y-m-d', strtotime( '-30 days' ) );
+			} else {
+				[ $y, $m, $d ] = explode( '-', $start );
+				if ( ! checkdate( (int) $m, (int) $d, (int) $y ) ) {
+					$start = date( 'Y-m-d', strtotime( '-30 days' ) );
+				}
+			}
+			$params['startDate'] = $start;
 		}
 		if ( $params['endDate'] !== '' && $params['endDate'] !== null ) {
-			$orignalEndDateTS  = strtotime( $params['endDate'] );
-			$params['endDate'] = date( 'Y-m-d', $orignalEndDateTS );
+			$end = sanitize_text_field( $params['endDate'] );
+			if ( ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $end ) ) {
+				$end = date( 'Y-m-d' );
+			} else {
+				[ $y, $m, $d ] = explode( '-', $end );
+				if ( ! checkdate( (int) $m, (int) $d, (int) $y ) ) {
+					$end = date( 'Y-m-d' );
+				}
+			}
+			$params['endDate'] = $end;
 		}
 		
-		if ( $params['pageIndex'] >= 1 ) {
-			$limit = absint($params['pageSize']) * absint($params['pageIndex']) . ',' . absint($params['pageSize']);
-		} else {
-			$limit = absint($params['pageSize']);	
-		}
-		
+		$page_size   = absint( $params['pageSize'] );
+		$page_offset = absint( $params['pageIndex'] ) * $page_size;
+
+		[ $filter_sql, $filter_values ] = $this->get_filter_params( $params );
+
 		$entry_query = $wpdb->prepare(
-			"SELECT DISTINCT id, to_email, subject, message, headers, attachments, DATE_FORMAT(sent_date, '%%Y/%%m/%%d %%H:%%i:%%S') as sent_date ,attachments_file as files  FROM  %i  WHERE 1 = 1 and DATE_FORMAT(sent_date,GET_FORMAT(DATE,'JIS')) >= %s and DATE_FORMAT(sent_date,GET_FORMAT(DATE,'JIS')) <= %s ".$this->get_filter_params($params)." order by id desc limit %d",
-			$table_name,
-			$params['startDate'],
-			$params['endDate'],
-			$limit
+			"SELECT DISTINCT id, to_email, subject, message, headers, attachments, DATE_FORMAT(sent_date, '%%Y/%%m/%%d %%H:%%i:%%S') as sent_date, attachments_file as files FROM %i WHERE 1 = 1 AND DATE_FORMAT(sent_date,GET_FORMAT(DATE,'JIS')) >= %s AND DATE_FORMAT(sent_date,GET_FORMAT(DATE,'JIS')) <= %s {$filter_sql} ORDER BY id DESC LIMIT %d OFFSET %d",
+			array_merge( [ $table_name, $params['startDate'], $params['endDate'] ], $filter_values, [ $page_size, $page_offset ] )
 		);
 		
 		
@@ -175,16 +183,14 @@ class API extends WP_REST_Controller {
 		
 		$cols = [];
 
-		foreach ( $wpdb->get_col( 'DESC ' . $table_name, 0 ) as $column_name ) {
+		foreach ( $wpdb->get_col( $wpdb->prepare( 'DESC %i', $table_name ), 0 ) as $column_name ) {
 			$cols[] = $column_name;
 		}
 
 		$entry_count_query = $wpdb->prepare(
-            "SELECT count(id)   FROM  %i  WHERE 1 = 1 and DATE_FORMAT(sent_date,GET_FORMAT(DATE,'JIS')) >= %s and DATE_FORMAT(sent_date,GET_FORMAT(DATE,'JIS')) <= %s ". $this->get_filter_params($params),
-            $table_name,
-            $params['startDate'],
-            $params['endDate'],
-        );
+			"SELECT count(id) FROM %i WHERE 1 = 1 AND DATE_FORMAT(sent_date,GET_FORMAT(DATE,'JIS')) >= %s AND DATE_FORMAT(sent_date,GET_FORMAT(DATE,'JIS')) <= %s {$filter_sql}",
+			array_merge( [ $table_name, $params['startDate'], $params['endDate'] ], $filter_values )
+		);
 		
 		//$entry_count_query = 'SELECT count(id) from ' . $table_name . ' WHERE 1 = 1 ' . $this->get_filter_params($params);
 		
@@ -192,14 +198,15 @@ class API extends WP_REST_Controller {
 		$rowcount     = $wpdb->num_rows;
 		$columns      = [ 'id', 'to_email', 'subject', 'message', 'headers', 'sent_date', 'files' ];
 
+		$upload_info = wp_upload_dir();
 		foreach ( $sql as $key => $row ) {
 			if($row->files !== '' && $row->files !== null){
 				$files = explode(',',$row->files);
 				$attachments = [];
 				if($files){
 					foreach ($files as $key => $value) {
-						$url = wp_upload_dir()['baseurl'].$value;
-						$fileExist = file_exists(wp_upload_dir()['basedir'].$value);
+						$url = $upload_info['baseurl'] . $value;
+						$fileExist = file_exists( $upload_info['basedir'] . $value );
 						$fileName = substr($value,strripos($value, '/') + 1, strlen($value));
 						$attachments[$key] = [
 							'name'=> $fileName,
@@ -230,54 +237,51 @@ class API extends WP_REST_Controller {
 		return rest_ensure_response( $res );
 	}
 
-	public function get_filter_params($params){
-		
-		global $wpdb;
-		$vars = [];
+	public function get_filter_params( $params ) {
+      global $wpdb;
+      $clauses = [];
+      $values  = [];
 
-		$allowed_keys = [ 'to_email', 'subject', 'message' ];
-		$allowed_operators = [ 'LIKE', 'NOT LIKE', '=', '!=' ];
-		$allowed_filter_relations = [ 'AND', 'OR' ];
+      $allowed_keys      = [ 'to_email', 'subject', 'message' ];
+      $allowed_operators = [ 'LIKE', 'NOT LIKE', '=', '!=' ];
+      $allowed_relations = [ 'AND', 'OR' ];
 
-		$filter = $params['filter'];
-		if($filter){
-			foreach ($filter as $key => $value) {
-				if($value['key'] !== ''){
+      $filter = $params['filter'] ?? [];
+      if ( $filter ) {
+          foreach ( $filter as $value ) {
+              if ( empty( $value['key'] ) ) {
+                  continue;
+              }
+              if ( ! in_array( $value['key'], $allowed_keys, true ) ) {
+                  continue;
+              }
+              if ( ! in_array( $value['operator'], $allowed_operators, true ) ) {
+                  continue;
+              }
 
-					// check if key is allowed
-					if ( ! in_array( $value['key'], $allowed_keys, true ) ) {
-						continue;
-					}
-					$key = esc_sql($value['key']);
+              $col      = $value['key'];
+              $operator = $value['operator'];
 
-					// check if operator is allowed
-					if ( ! in_array( $value['operator'], $allowed_operators, true ) ) {
-						continue;
-					}
-					$operator = esc_sql($value['operator']);
-					
-					if ( $operator === 'LIKE' || $operator == 'NOT LIKE' ) {
-						$val = '%%'.esc_sql($wpdb->esc_like($value['value'])).'%%';
-					}else{
-						$val = esc_sql($value['value']);
-					}
-			
-					$vars[] = " ( {$key} {$operator} '{$val}' ) ";
-				}
-			}
-			
-			if($vars){
-				if ( ! in_array( $params['filterRelation'], $allowed_filter_relations, true ) ) {
-					$params['filterRelation'] = ' AND ';
-				}
-				
-				$filter_string =  implode( $params['filterRelation'], $vars );
-				
-				return ' and (' .$filter_string.')';
-			}
-		}
-		return;
-	}
+              if ( $operator === 'LIKE' || $operator === 'NOT LIKE' ) {
+                  $clauses[] = "( {$col} {$operator} %s )";
+                  $values[]  = '%' . $wpdb->esc_like( $value['value'] ) . '%';
+              } else {
+                  $clauses[] = "( {$col} {$operator} %s )";
+                  $values[]  = $value['value'];
+              }
+          }
+
+          if ( $clauses ) {
+              $relation = in_array( $params['filterRelation'] ?? '', $allowed_relations, true )
+                  ? $params['filterRelation']
+                  : 'AND';
+
+              return [ ' AND ' . implode( " {$relation} ", $clauses ), $values ];
+          }
+      }
+
+      return [ '', [] ];
+  }
 
 	/**
 	 * This function is called on wml_log api endpoint with deletable method.
@@ -308,7 +312,7 @@ class API extends WP_REST_Controller {
 		// die('dfaf');
 		$result = $wpdb->get_results( $entry_query );
 
-		return $result[0];
+		return $result[0] ?? null;
 	}
 	/**
 	 * This function is called on wml_log api endpoint with deletable method.
@@ -327,19 +331,29 @@ class API extends WP_REST_Controller {
 		$ids     = $this->get_params( $request );
 		$message = [];
 
+		if ( ! is_array( $ids ) || empty( $ids ) ) {
+			return new WP_Error( 'invalid_ids', __( 'No IDs provided.', 'wpv-wml' ), [ 'status' => 400 ] );
+		}
+		$ids = array_map( 'absint', $ids );
+		$ids = array_filter( $ids );
+		if ( empty( $ids ) ) {
+			return new WP_Error( 'invalid_ids', __( 'Invalid IDs.', 'wpv-wml' ), [ 'status' => 400 ] );
+		}
+
 		$table_name = $wpdb->prefix . 'wml_entries';
-		// $deleteRow  =  "Delete from {$table_name} where id IN (" . implode( ',', $ids ) . ')';
 		$idsPlaceholder = implode( ', ', array_fill( 0, count( $ids ), '%d' ) );
-		// PHPCS:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
-		$deleteRow = $wpdb->prepare( "Delete from {$table_name} where id IN ($idsPlaceholder)", $ids );
+		$deleteRow = $wpdb->prepare(
+			"DELETE FROM %i WHERE id IN ({$idsPlaceholder})",
+			array_merge( [ $table_name ], $ids )
+		);
 
 		$dl1 = $wpdb->query( $deleteRow );
-		if ( $dl1 === 0 ) {
+		if ( $dl1 === false ) {
 			$message['status']  = 'failed';
-			$message['message'] = 'Could not able to delete Entries';
+			$message['message'] = __( 'Database error', 'wpv-wml' );
 		} else {
 			$message['status']  = 'passed';
-			$message['message'] = 'Entries Deleted';
+			$message['message'] = sprintf( _n( '%d entry deleted', '%d entries deleted', $dl1, 'wpv-wml' ), $dl1 );
 		}
 		return rest_ensure_response( $message );
 	}
@@ -391,12 +405,17 @@ class API extends WP_REST_Controller {
 	 * @return \WP_REST_Response Response object on success
 	 */
 	public function save_settings( WP_REST_Request $request ) {
-		// TODO :: need to update return type with wp_rest_respnse
 		$params   = $this->get_params( $request );
-		$callback = $params['callback'];
+		$callback = $params['callback'] ?? '';
+
+		$allowed_callbacks = [ 'wml_save_config' ];
+		if ( ! in_array( $callback, $allowed_callbacks, true ) ) {
+			return new WP_Error( 'invalid_callback', __( 'Invalid callback.', 'wpv-wml' ), [ 'status' => 400 ] );
+		}
+
 		$settings = new Settings();
 		$res      = $settings->$callback( $params );
-		wp_send_json( $res );
+		return rest_ensure_response( $res );
 	}
 
 	/**
@@ -418,10 +437,20 @@ class API extends WP_REST_Controller {
 		if($id === 0){
 			return rest_ensure_response( 'Invalid ID' );
 		}
-		// SQL injection in endpoint 
-		$mail_data = (array) $this->get_data_by_id( $id );	
-		$type      = $params['type'];
-		$email       = $params['to_email'];
+		$mail_data = $this->get_data_by_id( $id );
+		if ( empty( $mail_data ) ) {
+			return new WP_Error( 'not_found', __( 'Log entry not found.', 'wpv-wml' ), [ 'status' => 404 ] );
+		}
+		$mail_data = (array) $mail_data;
+		$type = sanitize_key( $params['type'] ?? 'resend' );
+		if ( ! in_array( $type, [ 'forward', 'resend' ], true ) ) {
+			return new WP_Error( 'invalid_type', __( 'Invalid type.', 'wpv-wml' ), [ 'status' => 400 ] );
+		}
+
+		$email = sanitize_email( $params['to_email'] ?? '' );
+		if ( ! is_email( $email ) ) {
+			return new WP_Error( 'invalid_email', __( 'Invalid recipient email.', 'wpv-wml' ), [ 'status' => 400 ] );
+		}
 		$subject     = $mail_data['subject'];
 		$message     = $mail_data['message'];
 		$attachments = [];
@@ -445,7 +474,7 @@ class API extends WP_REST_Controller {
 		foreach ($files as $key => $value) {
 			$extension = pathinfo($files[$key]['name'], PATHINFO_EXTENSION);
 			$time = time();
-			$targetFile = trailingslashit(wp_upload_dir()['basedir']). $time . '.' . $extension;
+			$targetFile = $uploadDir . $time . '.' . $extension;
 			$targetUrl = $uploadDir . $time . '.' . $extension;
 			$wp_check_ext = wp_check_filetype_and_ext($targetFile, $value['name']);
 			if($wp_check_ext['ext'] === false){
@@ -459,17 +488,19 @@ class API extends WP_REST_Controller {
 		$headers     = '';
 		if ( $type === 'forward' ) {
 			$headers = $mail_data['headers'];
-			if($headers == ''){
+			if ( $headers == '' ) {
 				$headers = 'Content-Type: text/html';
 			}
-		}else{
-			$orignalFiles = explode(',',$mail_data['files']);
-			foreach ($orignalFiles as $key => $value ) {
-				if($value){
-					$attachments[] = $uploadDir . trim($value);
+		} else {
+			$orignalFiles = explode( ',', $mail_data['files'] );
+			foreach ( $orignalFiles as $key => $value ) {
+				$value = trim( $value );
+				if ( $value ) {
+					// Stored paths begin with /uploads/... — resolve from ABSPATH to avoid double basedir prefix.
+					$attachments[] = $uploadDir . ltrim( preg_replace( '#^/uploads/#', '', $value ), '/' );
 				}
 			}
-			$headers = $params['headers'];
+			$headers = sanitize_textarea_field( $params['headers'] ?? '' );
 		}
 
 		$response = wp_mail( $email, $subject, $message, $headers, $attachments );
@@ -480,7 +511,7 @@ class API extends WP_REST_Controller {
 		return rest_ensure_response( $response );
 	}
 
-	function sanitize_data( $data ) {
+	private function sanitize_data( $data ) {
 
 		$sanitized_data = [];
 		

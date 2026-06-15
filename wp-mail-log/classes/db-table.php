@@ -1,6 +1,7 @@
 <?php
 
 namespace WML\Classes;
+defined( 'ABSPATH' ) || exit;
 
 /**
  * Database Tables

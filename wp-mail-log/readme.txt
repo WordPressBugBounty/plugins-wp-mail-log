@@ -1,9 +1,9 @@
 === WP Mail Log ===
-Contributors: wpvibes , anandau14
-Tags: email, logs, email log, mail, email logger, mail log, capture emails, capture
-Requires at least: 6.0
-Tested up to: 6.7
-Stable tag: trunk
+Contributors: wpvibes , anandau14, hardiksharma
+Tags: email, email log, mail, email logger, mail log
+Requires at least: 5.0
+Tested up to: 7.0
+Stable tag: 1.1.5
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -26,7 +26,10 @@ WP Mail Log is a WordPress plugin that allows you to easily log and view all ema
 ✅  [Form Vibes](https://bit.ly/3Dp0Hez): The ultimate tool to save and manage your Form submissions within WordPress Database.  It also provides a graphical analytics report that allows you to visualize how different forms are performing.
 ✅  [Elementor Addon Elements](https://bit.ly/3uCeIl2): With the help of Elementor Addon Elements, you can use rich and stunning widgets to build your dream website.
 ✅  [Frontend Product Editor](https://wordpress.org/plugins/frontend-product-editor): Frontend product editor can be a great addition to your WooCommerce websites since it allows you to modify the WooCommerce product information right from the front.
-✅  [Map Engine](https://wordpress.org/plugins/map-engine): An ultimate map builder plugin that meets all of your requirements. One-stop destination to create as many Google Maps and Open Street Maps as you want. 
+✅ [Content Lifecycle Manager](https://wordpress.org/plugins/content-lifecycle-manager): Content Lifecycle Manager helps you keep WordPress content accurate, up to date, and properly maintained over time.
+
+
+
 
 == Installation ==
 
@@ -42,14 +45,19 @@ No, it is plug 'n' play plugin. Just install the plugin and it will start captur
 
 == Changelog ==
 
-= 1.1.4 = 
+= 1.1.5 - 2026-05-18 =
+* Fixed: Pagination bug fixed
+
+= 1.1.4 =
 * Compatibility check with latest WordPress release
 
-= 1.1.3 = 
+= 1.1.3 =
 * Improved database queries for better security 
 
-= 1.1.2 = 
+= 1.1.2 =
 * Improved data sanitization and escaping for enhanced security
+
+
 
 = 1.1.1 = 
 * Fixed: Not creating required DB table in some cases

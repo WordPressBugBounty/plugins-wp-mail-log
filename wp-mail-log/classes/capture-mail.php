@@ -1,6 +1,9 @@
 <?php
-
 namespace WML\Classes;
+
+defined( 'ABSPATH' ) || exit;
+
+
 
 /**
  * Capture Mail
@@ -21,8 +24,9 @@ class Capture_Mail {
 	 * @return array unmodified $mail_info
 	 */
 	public static function log_email( $mail_info ) {
-
+		
 		$original_mail_info = $mail_info;
+		
 
 		global $wpdb;
 		$table_name         = $wpdb->prefix . 'wml_entries';
@@ -35,13 +39,13 @@ class Capture_Mail {
 			$mail_to = implode( ', ', $parts );
 		}
 		$attachedFiles = [];
-		if($attachment_present){
+		if ( $attachment_present === 'true' ) {
 			$files = $mail_info['attachments'];
 
 			foreach ($files as $key => $value) {
 				$attachedFiles[] = substr($value,strpos($value,'/uploads/') +  strlen('/uploads/') - 1,strlen($value));
 			}
-		};
+		}
 
 		// sanitize email
 		if(is_array($mail_to)){
@@ -63,9 +67,8 @@ class Capture_Mail {
 		//print_r($allowed_html); die();
 		// sanitize message but allow style tags
 		$mail_info['message'] = wp_kses($mail_info['message'], $allowed_html);
-
-		// Log into the database
 		
+		// Log into the database
 		$wpdb->insert(
 			$table_name,
 			[
@@ -79,6 +82,10 @@ class Capture_Mail {
 				'attachments_file' => implode(',', $attachedFiles),
 			]
 		);
+
+		if ( $wpdb->insert_id && class_exists( \WPVibes\WPMailLog\Vendor\WPVibes\ReviewReminder\ReviewReminder::class ) ) {
+			\WPVibes\WPMailLog\Vendor\WPVibes\ReviewReminder\ReviewReminder::increment( 'wp-mail-log', 'emails_logged' );
+		}
 
 		// return unmodifiyed array
 		return $original_mail_info;

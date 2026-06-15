@@ -1,6 +1,7 @@
 <?php
-
 namespace WML\Classes;
+
+defined( 'ABSPATH' ) || exit;
 
 /**
  * Admin Notices
@@ -45,7 +46,7 @@ class Admin_Notice {
 	 *
 	 */
 	public function __construct() {
-		add_filter( 'wpv-mail/admin_notices', [ $this, 'review_notice' ] );
+		// Review notice is now handled by wpvibes/review-reminder library.
 	}
 
 	/**
@@ -70,7 +71,7 @@ class Admin_Notice {
 		}
 
 		global $wpdb;
-		$rowcount = $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}wml_entries" );
+		$rowcount = $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM %i', $wpdb->prefix . 'wml_entries' ) );
 
 		if ( $rowcount > 10 ) {
 			$notice[] = 'wpv_mail_review';
