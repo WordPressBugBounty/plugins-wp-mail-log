@@ -144,28 +144,12 @@ class API extends WP_REST_Controller {
 			$params['endDate'] = date( 'Y-m-d H:i:s' );
 		}
 		if ( $params['startDate'] !== '' && $params['startDate'] !== null ) {
-			$start = sanitize_text_field( $params['startDate'] );
-			if ( ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $start ) ) {
-				$start = date( 'Y-m-d', strtotime( '-30 days' ) );
-			} else {
-				[ $y, $m, $d ] = explode( '-', $start );
-				if ( ! checkdate( (int) $m, (int) $d, (int) $y ) ) {
-					$start = date( 'Y-m-d', strtotime( '-30 days' ) );
-				}
-			}
-			$params['startDate'] = $start;
+			$orignalStartDateTS  = strtotime( sanitize_text_field( $params['startDate'] ) );
+			$params['startDate'] = date( 'Y-m-d', $orignalStartDateTS );
 		}
 		if ( $params['endDate'] !== '' && $params['endDate'] !== null ) {
-			$end = sanitize_text_field( $params['endDate'] );
-			if ( ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $end ) ) {
-				$end = date( 'Y-m-d' );
-			} else {
-				[ $y, $m, $d ] = explode( '-', $end );
-				if ( ! checkdate( (int) $m, (int) $d, (int) $y ) ) {
-					$end = date( 'Y-m-d' );
-				}
-			}
-			$params['endDate'] = $end;
+			$orignalEndDateTS  = strtotime( sanitize_text_field( $params['endDate'] ) );
+			$params['endDate'] = date( 'Y-m-d', $orignalEndDateTS );
 		}
 		
 		$page_size   = absint( $params['pageSize'] );

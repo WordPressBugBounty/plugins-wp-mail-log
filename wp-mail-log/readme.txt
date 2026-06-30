@@ -3,7 +3,7 @@ Contributors: wpvibes , anandau14, hardiksharma
 Tags: email, email log, mail, email logger, mail log
 Requires at least: 5.0
 Tested up to: 7.0
-Stable tag: 1.1.5
+Stable tag: 1.1.6
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -45,6 +45,9 @@ No, it is plug 'n' play plugin. Just install the plugin and it will start captur
 
 == Changelog ==
 
+= 1.1.6 - 2026-06-25 =
+* Fixed: Date Filter broken after last release fixed
+
 = 1.1.5 - 2026-05-18 =
 * Fixed: Pagination bug fixed
 
@@ -56,7 +59,6 @@ No, it is plug 'n' play plugin. Just install the plugin and it will start captur
 
 = 1.1.2 =
 * Improved data sanitization and escaping for enhanced security
-
 
 
 = 1.1.1 = 
